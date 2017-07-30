@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+/*created by Arya HajiTaheri*/
+#pragma warning(disable:4996)
+#define tMax 1
+#define dx (M_PI/10) // <--does not run on VS 2017 because of this, should be fine on C.Blocks
+#define xf M_PI
+#define xi 0
+#define D 1.0
+#define F 0.0
+#define n 1.0
+
+#define lambda .4
+#define dt (lambda*dx*dx/D)
+
+double u0(double);
+double exact(double, double);
+void CR();
+int main(void)
+{
+    CR();
+    return 0;
+}
+void CR()
+{
+    int N = (int)((xf - xi) / dx), M = (int)(tMax / dt); //max min conditions
+    double u[M + 1][N + 1]; //estimate array
+    double a = 1 + lambda, b = -lambda / 2, c = -lambda / 2;
+    double alpha[N], g[N];
+
+
+    int count = 0, i, j, t;
+    double k, l;
+    for (i = 0; i <= N; i++){
+        u[0][i] = u0((double)(i*dx));}
+    for (i = 0; i <= M; i++)
+    {
+        //u[i][0] = 0; <-- we do not have this condition
+        u[i][N] = 0;
+    }
+    alpha[0] = a;
+    for (t = 1; t <= M; t++)
+    {   //tridiagonal matrix
+        g[0] = ((1 - lambda)*u[t - 1][1] + (lambda / 2)*u[t - 1][0]);
+        for (i = 1; i < N; i++)
+        {
+            if (i == 1)
+            {
+                alpha[i] = a - 2 * c*b / alpha[i - 1];
+            }
+            else
+            {
+                alpha[i] = a - c*b / alpha[i - 1];
+            }
+
+            g[i] = ((lambda / 2)*u[t - 1][i - 1] + (1 - lambda)*u[t - 1][i] + (lambda / 2)*u[t - 1][i + 1]) - b / alpha[i - 1] * g[i - 1];
+        }
+
+        u[t][N - 1] = g[N - 1] / alpha[N - 1];
+
+        for (j = N - 2; j > 0; j--)
+        {
+            u[t][j] = (g[j] - c*u[t][j + 1]) / alpha[j];
+
+        }
+        u[t][0] = (g[0] - 2 * c*u[t][1]) / alpha[0];
+    }//printing and file IO
+    FILE *ft = fopen("t.csv", "w"), *fx = fopen("x.csv", "w"), *festimate = fopen("estimate.csv", "w"),
+          *f_exact = fopen("exact.csv", "w"), *f_error = fopen("error.csv", "w");
+    double error = 0.0;
+    for (i = 0; i <= M; i++)
+    {
+        for (j = 0; j <= N; j++)
+        {
+            printf("%.8lf ", u[i][j]);
+            fprintf(festimate, "%.8lf,", u[i][j]);
+            if (i == 0 || i == M || j == 0 || j == N)
+            {
+                error = 0;
+            }
+            else
+            {
+                error = fabs((u[i][j] - (exact(j*dx, i*dt))) / u[i][j]) * 100;
+            }
+            fprintf(f_error, "%.8lf,", error);
+        }
+        printf("\n");
+        fprintf(festimate, "\n");
+        fprintf(f_error, "\n");
+    }
+    printf("\n\n");
+    for (k = 0; k <= N; k++)
+    {
+        fprintf(ft, "%lf,", k);
+    }
+    for (k = 0; k <= M; k++)
+    {
+        fprintf(fx, "%lf\n", k);
+    }
+    for (k = 0; k <= M; k++)
+    {
+        for (l = 0; l <= N; l++)
+        {
+            printf("%.8lf ", exact(l*dx, k*dt));
+            fprintf(f_exact, "%.8lf,", exact(l*dx, k*dt));
+        }
+        fprintf(f_exact, "\n");
+        printf("\n");
+    }
+    fclose(ft);
+    fclose(fx);
+    fclose(festimate);
+    fclose(f_error);
+    fclose(f_exact);
+
+}
+//estimate and exact functions
+double u0(double x)
+{
+    return cos((n - 0.5)*x);
+}
+
+double exact(double x, double t)
+{
+    return  exp(-1 * pow(n - 0.5, 2)*t)*cos((n - 0.5)*x);;
+}
